@@ -10,7 +10,8 @@ Output:
 """
 
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 import torch
 import yaml
@@ -78,7 +79,7 @@ def run(config_path: str = "../configs/config.yaml"):
     print(f"  Adv   accuracy on batch: {100*n_correct_adv/n:.1f}%")
 
     # ── Vẽ lưới ảnh ───────────────────────────────────────────
-    os.makedirs("../results/figures", exist_ok=True)
+    os.makedirs(os.path.join(ROOT, "results", "figures"), exist_ok=True)
     plot_adversarial_examples(
         original    = images[:cfg["vis"]["num_examples"]].cpu(),
         adversarial = adv_images[:cfg["vis"]["num_examples"]].cpu(),
@@ -87,14 +88,14 @@ def run(config_path: str = "../configs/config.yaml"):
         epsilon     = epsilon,
         num_steps   = num_steps,
         class_names = class_names,
-        save_path   = f"../results/figures/exp3_examples_{ds_name.lower()}.png",
+        save_path   = os.path.join(ROOT, "results", "figures", f"exp3_examples_{ds_name.lower()}.png"),
     )
 
     # ── Vẽ loss evolution ──────────────────────────────────────
     plot_loss_evolution(
         loss_history = attacker.last_stats["loss_history"],
         epsilon      = epsilon,
-        save_path    = f"../results/figures/exp3_loss_evolution_{ds_name.lower()}.png",
+        save_path    = os.path.join(ROOT, "results", "figures", f"exp3_loss_evolution_{ds_name.lower()}.png"),
     )
 
     print("\n[Exp3] Hoàn tất!")

@@ -1,0 +1,18 @@
+[
+  {
+    "num_steps": 5,
+    "adv_acc": 0.0
+  },
+  {
+    "num_steps": 10,
+    "adv_acc": 0.0
+  },
+  {
+    "num_steps": 20,
+    "adv_acc": 0.0
+  },
+  {
+    "num_steps": 40,
+    "adv_acc": 0.0
+  }
+]

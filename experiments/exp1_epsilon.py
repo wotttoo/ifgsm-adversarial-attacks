@@ -10,7 +10,8 @@ Kết quả kỳ vọng:
 """
 
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 import torch
 import yaml
@@ -72,14 +73,14 @@ def run(config_path: str = "../configs/config.yaml"):
     )
 
     # ── Lưu kết quả ──────────────────────────────────────────
-    os.makedirs("../results/logs", exist_ok=True)
-    with open(f"../results/logs/exp1_epsilon_{ds_name.lower()}.json", "w") as f:
+    os.makedirs(os.path.join(ROOT, "results", "logs"), exist_ok=True)
+    with open(os.path.join(ROOT, "results", "logs", f"exp1_epsilon_{ds_name.lower()}.json"), "w") as f:
         json.dump(results, f, indent=2)
 
     # ── Vẽ biểu đồ ───────────────────────────────────────────
     plot_accuracy_vs_epsilon(
         results,
-        save_path=f"../results/figures/exp1_acc_vs_epsilon_{ds_name.lower()}.png"
+        save_path=os.path.join(ROOT, "results", "figures", f"exp1_acc_vs_epsilon_{ds_name.lower()}.png")
     )
 
     print("\n[Exp1] Hoàn tất!")

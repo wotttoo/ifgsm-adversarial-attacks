@@ -13,7 +13,8 @@ Kết quả kỳ vọng:
 """
 
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 
 import torch
 import yaml
@@ -68,13 +69,13 @@ def run(config_path: str = "../configs/config.yaml"):
         max_batches = 20,
     )
 
-    os.makedirs("../results/logs", exist_ok=True)
-    with open(f"../results/logs/exp2_steps_{ds_name.lower()}.json", "w") as f:
+    os.makedirs(os.path.join(ROOT, "results", "logs"), exist_ok=True)
+    with open(os.path.join(ROOT, "results", "logs", f"exp2_steps_{ds_name.lower()}.json"), "w") as f:
         json.dump(results, f, indent=2)
 
     plot_accuracy_vs_steps(
         results, epsilon=epsilon,
-        save_path=f"../results/figures/exp2_acc_vs_steps_{ds_name.lower()}.png"
+        save_path=os.path.join(ROOT, "results", "figures", f"exp2_acc_vs_steps_{ds_name.lower()}.png")
     )
 
     print("\n[Exp2] Hoàn tất!")
