@@ -73,7 +73,7 @@ ifgsm_project/
 
 ```bash
 # Clone the repo
-git clone https://github.com/AIVIETNAM-AIO-alan/ifgsm-adversarial-attacks.git
+git clone https://github.com/wotttoo/ifgsm-adversarial-attacks.git
 cd ifgsm-adversarial-attacks
 
 # Create a virtual environment (recommended)
