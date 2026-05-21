@@ -692,6 +692,234 @@ def plot_transfer_lines(
 
 
 # ─────────────────────────────────────────────────────────────
+# 8. Adversarial Training — lịch sử huấn luyện
+# ─────────────────────────────────────────────────────────────
+
+def plot_adv_training_history(
+    history      : Dict,
+    epsilon_train: float        = 0.3,
+    dataset_name : str          = "",
+    save_path    : Optional[str] = None,
+) -> None:
+    """
+    Vẽ lịch sử huấn luyện adversarial: loss + clean/robust accuracy theo epoch.
+    history có keys: train_loss, train_clean_acc, train_rob_acc,
+                     val_loss,   val_clean_acc,   val_rob_acc.
+    """
+    epochs = range(1, len(history["train_loss"]) + 1)
+    fig, (ax_loss, ax_acc) = plt.subplots(1, 2, figsize=(12, 4.5))
+    ds_title = f" — {dataset_name}" if dataset_name else ""
+
+    # Loss
+    ax_loss.plot(epochs, history["train_loss"], "o-", color="steelblue",  label="Train loss")
+    ax_loss.plot(epochs, history["val_loss"],   "s-", color="darkorange", label="Val loss")
+    ax_loss.set_xlabel("Epoch"); ax_loss.set_ylabel("Loss")
+    ax_loss.set_title(f"Loss{ds_title}", fontweight="bold")
+    ax_loss.legend(); ax_loss.grid(alpha=0.3)
+
+    # Accuracy
+    ax_acc.plot(epochs, history["train_clean_acc"], "o-",  color="steelblue",
+                label="Train Clean acc", linewidth=2)
+    ax_acc.plot(epochs, history["val_clean_acc"],   "o--", color="steelblue",
+                label="Val Clean acc",   linewidth=1.5, alpha=0.8)
+    ax_acc.plot(epochs, history["train_rob_acc"],   "s-",  color="crimson",
+                label=f"Train Robust acc (ε={epsilon_train})", linewidth=2)
+    ax_acc.plot(epochs, history["val_rob_acc"],     "s--", color="crimson",
+                label=f"Val Robust acc (ε={epsilon_train})",   linewidth=1.5, alpha=0.8)
+    ax_acc.set_xlabel("Epoch"); ax_acc.set_ylabel("Accuracy (%)")
+    ax_acc.set_title(f"Clean vs Robust Accuracy{ds_title}", fontweight="bold")
+    ax_acc.legend(fontsize=8.5); ax_acc.grid(alpha=0.3)
+    ax_acc.set_ylim(0, 105)
+
+    fig.suptitle(
+        f"Adversarial Training History (FGSM-AT, ε={epsilon_train}){ds_title}",
+        fontsize=13, fontweight="bold"
+    )
+    plt.tight_layout()
+    _save_or_show(fig, save_path or os.path.join(SAVE_DIR, f"adv_training_history.png"))
+
+
+# ─────────────────────────────────────────────────────────────
+# 9. So sánh Standard vs Adversarially Trained model
+# ─────────────────────────────────────────────────────────────
+
+def plot_robustness_comparison(
+    std_results  : List[Dict],
+    adv_results  : List[Dict],
+    dataset_name : str          = "",
+    save_path    : Optional[str] = None,
+) -> None:
+    """
+    So sánh robust accuracy (FGSM) của Standard model vs Adversarial model
+    trên nhiều mức epsilon. Vẽ 2 panel: Accuracy và ASR.
+    """
+    epsilons = [r["epsilon"] for r in std_results]
+
+    std_clean = std_results[0]["clean_acc"]
+    adv_clean = adv_results[0]["clean_acc"]
+    std_fgsm  = [r["fgsm_acc"] for r in std_results]
+    adv_fgsm  = [r["fgsm_acc"] for r in adv_results]
+    std_asr   = [r["fgsm_asr"] for r in std_results]
+    adv_asr   = [r["fgsm_asr"] for r in adv_results]
+
+    ds_title = f" — {dataset_name}" if dataset_name else ""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    # ── Panel 1: Accuracy ─────────────────────────────────────
+    ax1.axhline(std_clean, color="steelblue", linestyle=":", linewidth=1.5,
+                label=f"Standard clean ({std_clean:.1f}%)", alpha=0.7)
+    ax1.axhline(adv_clean, color="crimson",   linestyle=":", linewidth=1.5,
+                label=f"Adv-trained clean ({adv_clean:.1f}%)", alpha=0.7)
+    ax1.plot(epsilons, std_fgsm, "s--", color="steelblue",
+             label="Standard FGSM acc", linewidth=2, markersize=7)
+    ax1.plot(epsilons, adv_fgsm, "o-",  color="crimson",
+             label="Adv-trained FGSM acc", linewidth=2.5, markersize=8)
+
+    ax1.set_xlabel("Epsilon (ε)", fontsize=12)
+    ax1.set_ylabel("Accuracy (%)", fontsize=12)
+    ax1.set_title(f"Robust Accuracy vs ε{ds_title}", fontsize=12, fontweight="bold")
+    ax1.set_xticks(epsilons); ax1.set_ylim(0, 105)
+    ax1.legend(fontsize=9); ax1.grid(alpha=0.3)
+
+    # ── Panel 2: ASR ──────────────────────────────────────────
+    ax2.plot(epsilons, std_asr, "s--", color="steelblue",
+             label="Standard ASR", linewidth=2, markersize=7)
+    ax2.plot(epsilons, adv_asr, "o-",  color="crimson",
+             label="Adv-trained ASR", linewidth=2.5, markersize=8)
+
+    # Tô vùng chênh lệch ASR
+    ax2.fill_between(epsilons, adv_asr, std_asr,
+                     alpha=0.12, color="green", label="ASR reduction")
+
+    ax2.set_xlabel("Epsilon (ε)", fontsize=12)
+    ax2.set_ylabel("ASR (%)", fontsize=12)
+    ax2.set_title(f"Attack Success Rate vs ε{ds_title}", fontsize=12, fontweight="bold")
+    ax2.set_xticks(epsilons); ax2.set_ylim(0, 105)
+    ax2.legend(fontsize=9); ax2.grid(alpha=0.3)
+
+    # Annotate mức giảm ASR tại epsilon lớn nhất
+    max_eps   = epsilons[-1]
+    reduction = std_asr[-1] - adv_asr[-1]
+    ax2.annotate(
+        f"−{reduction:.1f} pp",
+        xy     = (max_eps, (std_asr[-1] + adv_asr[-1]) / 2),
+        xytext = (-40, 0), textcoords="offset points",
+        fontsize=10, color="green", fontweight="bold",
+        arrowprops=dict(arrowstyle="->", color="green", lw=1.2),
+    )
+
+    fig.suptitle(
+        f"Standard vs Adversarially Trained Model (FGSM-AT){ds_title}\n"
+        f"Standard clean: {std_clean:.1f}%  |  Adv-trained clean: {adv_clean:.1f}%",
+        fontsize=13, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save_or_show(fig, save_path or os.path.join(SAVE_DIR, "adv_robustness_comparison.png"))
+
+
+# ─────────────────────────────────────────────────────────────
+# 10. FGSM epsilon sweep grid (ảnh + nhiễu theo từng mức ε)
+# ─────────────────────────────────────────────────────────────
+
+def plot_fgsm_epsilon_grid(
+    model        : "torch.nn.Module",
+    images       : "torch.Tensor",
+    labels       : List[int],
+    epsilon_list : List[float],
+    dataset_name : str                 = "",
+    class_names  : Optional[List[str]] = None,
+    n_samples    : int                 = 5,
+    save_path    : Optional[str]       = None,
+) -> None:
+    """
+    Grid FGSM: hàng = mẫu ảnh, cột = Original + mỗi epsilon.
+    Mỗi ô adversarial hiển thị:
+      - Ảnh đối kháng (hàng trên)
+      - Nhiễu khuếch đại ×10 (hàng dưới, tiêu đề nhỏ)
+      - Nhãn dự đoán (xanh=đúng, đỏ=sai) + confidence %
+    """
+    import torch.nn.functional as F
+    from attacks.fgsm import fgsm_attack
+    from utils.data_loader import get_clip_values
+
+    model.eval()
+    device = next(model.parameters()).device
+    n      = min(n_samples, images.size(0))
+    imgs   = images[:n].to(device)
+    lbls   = torch.tensor(labels[:n], device=device)
+    clip_min, clip_max = get_clip_values(dataset_name)
+
+    n_eps  = len(epsilon_list)
+    n_cols = n_eps + 1                  # Original + K epsilons
+    # 2 hàng con mỗi sample: ảnh adv + nhiễu×10
+    fig, axes = plt.subplots(n * 2, n_cols,
+                             figsize=(2.6 * n_cols, 3.2 * n))
+    if n == 1:
+        axes = axes.reshape(2, n_cols)[np.newaxis]
+    else:
+        axes = axes.reshape(n, 2, n_cols)
+
+    # Header cột
+    axes[0, 0, 0].set_title("Original", fontsize=10, fontweight="bold", pad=6)
+    for j, eps in enumerate(epsilon_list):
+        axes[0, 0, j + 1].set_title(f"ε = {eps}", fontsize=10, fontweight="bold", pad=6)
+
+    with torch.no_grad():
+        clean_preds = model(imgs).argmax(1).cpu().tolist()
+
+    for i in range(n):
+        # ── Cột 0: ảnh gốc (hàng trên) + trống (hàng dưới) ──
+        _show_img(axes[i, 0, 0], imgs[i], dataset_name)
+        axes[i, 0, 0].set_ylabel(
+            f"GT: {_label_name(labels[i], class_names)}",
+            fontsize=8, rotation=0, labelpad=65, va="center",
+        )
+        axes[i, 1, 0].axis("off")   # hàng nhiễu của cột gốc — để trống
+
+        # ── Cột 1..K: FGSM tại từng epsilon ──────────────────
+        for j, eps in enumerate(epsilon_list):
+            adv = fgsm_attack(
+                model, imgs[i:i+1], lbls[i:i+1],
+                epsilon=eps, clip_min=clip_min, clip_max=clip_max,
+            )
+            perturb = adv - imgs[i:i+1]
+
+            with torch.no_grad():
+                logits = model(adv)
+                probs  = F.softmax(logits, dim=1)
+                pred   = int(logits.argmax(1).item())
+                conf   = float(probs[0, pred].item()) * 100
+
+            # Hàng trên: ảnh đối kháng + nhãn
+            _show_img(axes[i, 0, j + 1], adv[0], dataset_name)
+            correct = (pred == labels[i])
+            color   = "green" if correct else "red"
+            mark    = "✓" if correct else "✗"
+            axes[i, 0, j + 1].set_title(
+                f"{mark} {_label_name(pred, class_names)}\n{conf:.1f}%",
+                fontsize=8, color=color,
+            )
+
+            # Hàng dưới: nhiễu khuếch đại ×10 + chú thích ε
+            perturb_vis = (perturb[0].cpu() * 10 + 0.5).clamp(0, 1)
+            _show_img(axes[i, 1, j + 1], perturb_vis, "")
+            axes[i, 1, j + 1].set_title(f"ε={eps} | nhiễu ×10", fontsize=7, color="gray", pad=2)
+
+    ds_title = f" — {dataset_name}" if dataset_name else ""
+    fig.suptitle(
+        f"FGSM: Ảnh đối kháng theo mức ε{ds_title}\n"
+        f"Xanh ✓ = dự đoán đúng  |  Đỏ ✗ = dự đoán sai  |  Hàng dưới = nhiễu ×10",
+        fontsize=12, fontweight="bold", y=1.01,
+    )
+
+    plt.tight_layout()
+    _save_or_show(
+        fig,
+        save_path or os.path.join(SAVE_DIR, f"fgsm_epsilon_grid_{dataset_name.lower()}.png"),
+    )
+
+
+# ─────────────────────────────────────────────────────────────
 # Helper lưu file
 # ─────────────────────────────────────────────────────────────
 
