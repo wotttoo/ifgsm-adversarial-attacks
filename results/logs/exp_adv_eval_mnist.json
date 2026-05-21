@@ -1,0 +1,114 @@
+{
+  "standard": [
+    {
+      "epsilon": 0.05,
+      "total": 2000,
+      "n_correct": 1986,
+      "clean_acc": 99.3,
+      "fgsm_acc": 94.4,
+      "fgsm_asr": 4.934541792547835,
+      "time_s": 7.4
+    },
+    {
+      "epsilon": 0.1,
+      "total": 2000,
+      "n_correct": 1986,
+      "clean_acc": 99.3,
+      "fgsm_acc": 70.95,
+      "fgsm_asr": 28.54984894259819,
+      "time_s": 7.625
+    },
+    {
+      "epsilon": 0.15,
+      "total": 2000,
+      "n_correct": 1986,
+      "clean_acc": 99.3,
+      "fgsm_acc": 42.65,
+      "fgsm_asr": 57.04934541792548,
+      "time_s": 7.689
+    },
+    {
+      "epsilon": 0.2,
+      "total": 2000,
+      "n_correct": 1986,
+      "clean_acc": 99.3,
+      "fgsm_acc": 24.75,
+      "fgsm_asr": 75.07552870090635,
+      "time_s": 7.661
+    },
+    {
+      "epsilon": 0.25,
+      "total": 2000,
+      "n_correct": 1986,
+      "clean_acc": 99.3,
+      "fgsm_acc": 15.55,
+      "fgsm_asr": 84.34038267875125,
+      "time_s": 7.636
+    },
+    {
+      "epsilon": 0.3,
+      "total": 2000,
+      "n_correct": 1986,
+      "clean_acc": 99.3,
+      "fgsm_acc": 10.75,
+      "fgsm_asr": 89.1742195367573,
+      "time_s": 7.448
+    }
+  ],
+  "adversarial": [
+    {
+      "epsilon": 0.05,
+      "total": 2000,
+      "n_correct": 1979,
+      "clean_acc": 98.95,
+      "fgsm_acc": 97.4,
+      "fgsm_asr": 1.5664477008590196,
+      "time_s": 7.748
+    },
+    {
+      "epsilon": 0.1,
+      "total": 2000,
+      "n_correct": 1979,
+      "clean_acc": 98.95,
+      "fgsm_acc": 96.5,
+      "fgsm_asr": 2.47599797877716,
+      "time_s": 8.455
+    },
+    {
+      "epsilon": 0.15,
+      "total": 2000,
+      "n_correct": 1979,
+      "clean_acc": 98.95,
+      "fgsm_acc": 95.35,
+      "fgsm_asr": 3.638201111672562,
+      "time_s": 8.551
+    },
+    {
+      "epsilon": 0.2,
+      "total": 2000,
+      "n_correct": 1979,
+      "clean_acc": 98.95,
+      "fgsm_acc": 94.65,
+      "fgsm_asr": 4.345629105608894,
+      "time_s": 7.798
+    },
+    {
+      "epsilon": 0.25,
+      "total": 2000,
+      "n_correct": 1979,
+      "clean_acc": 98.95,
+      "fgsm_acc": 93.65,
+      "fgsm_asr": 5.356240525517938,
+      "time_s": 8.23
+    },
+    {
+      "epsilon": 0.3,
+      "total": 2000,
+      "n_correct": 1979,
+      "clean_acc": 98.95,
+      "fgsm_acc": 92.0,
+      "fgsm_asr": 7.023749368367863,
+      "time_s": 8.687
+    }
+  ]
+}
