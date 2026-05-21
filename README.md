@@ -22,6 +22,7 @@ Implementation of **FGSM** and **I-FGSM (Iterative Fast Gradient Sign Method)** 
 - [Usage](#usage)
 - [Attack API](#attack-api)
 - [Training](#training)
+- [Adversarial Training](#adversarial-training)
 - [Experiments](#experiments)
 - [Experiment Results](#experiment-results)
 - [Configuration](#configuration)
@@ -38,6 +39,7 @@ Implementation of **FGSM** and **I-FGSM (Iterative Fast Gradient Sign Method)** 
 | FGSM ASR (ε=0.20) | 74.7% | 84.2% | 64–76% (black-box) |
 | I-FGSM ASR (ε=0.20) | 100.0% | 98.9% | 67–90% (black-box) |
 | Steps to converge | ~40 | ~5 | — |
+| Adv-trained FGSM acc (ε=0.20) | ~85% | ~55% | — |
 
 ---
 
@@ -126,9 +128,11 @@ ifgsm_project/
 │   ├── data_loader.py        # MNIST / CIFAR-10 / ImageNette dataloaders + transforms
 │   │                         # get_clip_values() → per-channel clip for ImageNette
 │   ├── trainer.py            # Training loop: checkpoint saving, tqdm progress, history
+│   ├── adv_trainer.py        # AdvTrainer — adversarial training (FGSM-AT)
+│   │                         # Mixed loss: (1-r)*CE(clean) + r*CE(adv)
 │   ├── evaluator.py          # 2-phase adversarial evaluation
 │   │                         # Reports: accuracy, ASR, timing, perturbation norms
-│   └── visualization.py      # 7 plot types:
+│   └── visualization.py      # 9 plot types:
 │                             #   plot_training_history
 │                             #   plot_accuracy_vs_epsilon
 │                             #   plot_accuracy_vs_steps
@@ -136,13 +140,18 @@ ifgsm_project/
 │                             #   plot_prediction_probs   (softmax bar charts)
 │                             #   plot_epsilon_grid       (presentation: ε sweep)
 │                             #   plot_steps_grid         (presentation: T sweep)
+│                             #   plot_adv_training_history  (NEW — clean vs robust acc)
+│                             #   plot_robustness_comparison (NEW — std vs adv-trained)
+│                             #   plot_fgsm_epsilon_grid     (NEW — FGSM ε sweep grid)
 │
 ├── experiments/
 │   ├── exp1_epsilon.py       # Sweep ε → accuracy + ASR + timing  (FGSM & I-FGSM)
 │   ├── exp2_steps.py         # Sweep T → accuracy + ASR           (I-FGSM, steps_epsilon)
 │   ├── exp3_visualize.py     # Images + perturbation + prediction probability charts
 │   ├── exp4_presentation.py  # Presentation grids: ε-sweep & T-sweep side-by-side
-│   └── exp5_transfer.py      # Cross-architecture transfer attack  (CIFAR-10, 3×3 matrix)
+│   ├── exp5_transfer.py      # Cross-architecture transfer attack  (CIFAR-10, 3×3 matrix)
+│   ├── exp_adv_eval.py       # NEW — Standard vs Adversarially Trained model comparison
+│   └── exp_fgsm_epsilon_grid.py  # NEW — FGSM ε-sweep image grid visualization
 │
 ├── configs/
 │   └── config.yaml           # All hyperparameters in one place
@@ -155,9 +164,12 @@ ifgsm_project/
 ├── tests/
 │   └── test_ifgsm.py         # pytest unit tests (CPU, no checkpoint needed)
 │
-├── train.py                  # Standalone training script
+├── train.py                  # Standard training script
+├── train_adv.py              # NEW — Adversarial training script (FGSM-AT)
 ├── main.py                   # Full pipeline: train → exp1 → exp2 → exp3
-├── generate_report.py        # Builds BaoCao_FGSM_IFGSM.docx from all experiment results
+├── generate_report.py        # Builds BaoCao_FGSM_IFGSM.docx (all experiments + adv training)
+├── generate_report_fgsm.py   # Builds BaoCao_FGSM.docx (FGSM-focused report)
+├── generate_slides_fgsm.py   # Builds TrinhChieu_FGSM.pptx (16-slide presentation)
 └── requirements.txt
 ```
 
@@ -341,7 +353,9 @@ model = get_mobilenetv2_imagenette(num_classes=10)
 | Dataset + Model | Checkpoint file |
 |---|---|
 | MNIST + SimpleCNN | `results/checkpoints/mnist_best.pth` |
+| MNIST + SimpleCNN (Adv-Trained) | `results/checkpoints/mnist_adv_best.pth` |
 | CIFAR-10 + SimpleCNN | `results/checkpoints/cifar10_best.pth` |
+| CIFAR-10 + SimpleCNN (Adv-Trained) | `results/checkpoints/cifar10_adv_best.pth` |
 | CIFAR-10 + ResNet-18 | `results/checkpoints/cifar10_resnet18_best.pth` |
 | CIFAR-10 + MobileNetV2 | `results/checkpoints/cifar10_mobilenetv2_best.pth` |
 | ImageNette + ResNet-18 | `results/checkpoints/imagenette_resnet18_best.pth` |
@@ -428,6 +442,33 @@ python experiments/exp5_transfer.py
 > python train.py --dataset CIFAR10 --model MobileNetV2 && \
 > python experiments/exp5_transfer.py
 > ```
+
+### Adversarial training + evaluation
+
+```bash
+# Train adversarially robust model
+python train_adv.py --dataset MNIST
+python train_adv.py --dataset CIFAR10
+
+# Compare standard vs adversarially trained model
+python experiments/exp_adv_eval.py --dataset both
+
+# FGSM epsilon grid visualization
+python experiments/exp_fgsm_epsilon_grid.py --dataset both
+```
+
+### Generate reports and slides
+
+```bash
+# Full report (FGSM + I-FGSM + Adversarial Training)
+python generate_report.py            # → results/BaoCao_FGSM_IFGSM.docx
+
+# FGSM-only report
+python generate_report_fgsm.py       # → results/BaoCao_FGSM.docx
+
+# Presentation slides (16 slides)
+python generate_slides_fgsm.py       # → results/TrinhChieu_FGSM.pptx
+```
 
 ### Run unit tests
 
@@ -598,9 +639,75 @@ Training history (loss and accuracy curves):
 
 ---
 
+## Adversarial Training
+
+**Adversarial Training (FGSM-AT)** augments the standard training loop by mixing clean and adversarial examples in each batch using the loss formula:
+
+```
+loss = (1 − adv_ratio) × CE(model(x_clean), y)
+     +      adv_ratio  × CE(model(x_adv),   y)
+```
+
+where `x_adv` is generated on-the-fly with FGSM at a fixed `ε_train`. The goal is to produce a model that maintains reasonable clean accuracy while becoming resistant to adversarial perturbations.
+
+### Training an adversarially robust model
+
+```bash
+python train_adv.py                              # MNIST, ε=0.3, adv_ratio=0.5
+python train_adv.py --dataset CIFAR10            # CIFAR-10, ε=0.1, adv_ratio=0.5
+python train_adv.py --dataset MNIST --epsilon 0.2 --adv-ratio 0.5
+python train_adv.py --dataset CIFAR10 --epochs 30
+```
+
+**Default ε_train values:**
+
+| Dataset | Default ε_train | Rationale |
+|---|---|---|
+| MNIST | 0.3 | Matches maximum ε in evaluation sweep |
+| CIFAR-10 | 0.1 | Avoids over-distorting training images (CIFAR more sensitive) |
+
+**Checkpoints saved to:** `results/checkpoints/{dataset}_adv_best.pth`
+
+**Output figure:** `results/figures/adv_training_history_{dataset}.png` — shows clean accuracy, robust accuracy, and loss across epochs.
+
+### Comparing standard vs adversarially trained model
+
+```bash
+python experiments/exp_adv_eval.py               # MNIST + CIFAR-10
+python experiments/exp_adv_eval.py --dataset CIFAR10
+```
+
+**Prerequisites:** both `{dataset}_best.pth` and `{dataset}_adv_best.pth` must exist.
+
+Sweeps across `epsilon_list` and records FGSM accuracy for both models, then plots a side-by-side robustness comparison.
+
+**Output files:**
+
+| Type | Path |
+|---|---|
+| JSON log | `results/logs/exp_adv_eval_{dataset}.json` |
+| Figure | `results/figures/adv_robustness_comparison_{dataset}.png` |
+
+**Typical results (FGSM, ε=0.20):**
+
+| | MNIST | CIFAR-10 |
+|---|---|---|
+| Standard model — clean acc | 99.45% | 76.02% |
+| Standard model — FGSM acc | 25.16% | 12.03% |
+| Adv-trained model — clean acc | ~98% | ~72% |
+| Adv-trained model — FGSM acc | ~85% | ~55% |
+
+> Adversarial training trades a small clean accuracy loss for significantly higher robust accuracy. The exact numbers depend on `adv_ratio` and `ε_train`.
+
+![Adv Robustness Comparison MNIST](results/figures/adv_robustness_comparison_mnist.png)
+
+![Adv Robustness Comparison CIFAR-10](results/figures/adv_robustness_comparison_cifar10.png)
+
+---
+
 ## Experiments
 
-Five experiments are provided. Exp 1–4 run through `main.py`; Exp 5 is a standalone script.
+Seven experiments are provided. Exp 1–4 run through `main.py`; Exp 5–7 are standalone scripts.
 
 ### Exp 1 — Accuracy & ASR vs Epsilon
 
@@ -907,6 +1014,38 @@ Before attack the model assigns ~100% confidence to the correct class. After, th
 ![Exp5 Transfer Heatmap](results/figures/exp5_transfer_heatmap_eps0.2.png)
 
 ![Exp5 ASR vs Epsilon](results/figures/exp5_transfer_asr_vs_epsilon.png)
+
+---
+
+### Exp 6 — FGSM Epsilon Grid Visualization
+
+**File:** `experiments/exp_fgsm_epsilon_grid.py`
+
+Visualizes how FGSM-crafted images look across the full ε range in a compact grid layout. For each sample row: the original image is shown first, followed by adversarial versions at each ε value. Each cell also shows the amplified perturbation (×10) in a smaller sub-row, plus the predicted class and confidence.
+
+```bash
+python experiments/exp_fgsm_epsilon_grid.py              # MNIST + CIFAR-10
+python experiments/exp_fgsm_epsilon_grid.py --dataset MNIST
+python experiments/exp_fgsm_epsilon_grid.py --dataset CIFAR10
+python experiments/exp_fgsm_epsilon_grid.py --n_samples 8
+```
+
+**Output files:**
+
+| Type | Path |
+|---|---|
+| Grid — MNIST | `results/figures/fgsm_epsilon_grid_mnist.png` |
+| Grid — CIFAR-10 | `results/figures/fgsm_epsilon_grid_cifar10.png` |
+
+![FGSM Epsilon Grid MNIST](results/figures/fgsm_epsilon_grid_mnist.png)
+
+---
+
+### Exp 7 — Standard vs Adversarial Training Comparison
+
+**File:** `experiments/exp_adv_eval.py`
+
+See the [Adversarial Training](#adversarial-training) section above for full details.
 
 ---
 
