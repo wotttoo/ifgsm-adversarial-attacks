@@ -1,13 +1,13 @@
-# I-FGSM Adversarial Attack — Image Classifier
+# FGSM / I-FGSM / MI-FGSM Adversarial Attack — Image Classifier
 
-Implementation of **FGSM** and **I-FGSM (Iterative Fast Gradient Sign Method)** adversarial attacks on image classifiers, supporting **MNIST**, **CIFAR-10**, and **ImageNette** (pretrained ResNet-18 & MobileNetV2), with full training, evaluation, visualization pipelines, and a **cross-architecture transfer attack experiment** across SimpleCNN, ResNet-18, and MobileNetV2.
+Implementation of **FGSM**, **I-FGSM**, **MI-FGSM**, and **Targeted FGSM** adversarial attacks on image classifiers, supporting **MNIST**, **CIFAR-10**, and **ImageNette**, with full training, evaluation, visualization pipelines, cross-architecture transfer attack experiments, adversarial training defense, and a live **Gradio demo on Hugging Face Spaces**.
 
-> Paper: *Adversarial Examples in the Physical World* — Kurakin, Goodfellow & Bengio (2016)
-> https://arxiv.org/abs/1607.02533
+> Papers: Goodfellow et al. (2015) · Kurakin et al. (2016) · Dong et al. CVPR 2018
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
+[![HF Space](https://img.shields.io/badge/🤗%20HuggingFace-Space-yellow)](https://huggingface.co/spaces/wotttoo/fgsm-adversarial-demo)
 
 ---
 
@@ -38,8 +38,12 @@ Implementation of **FGSM** and **I-FGSM (Iterative Fast Gradient Sign Method)** 
 | Clean accuracy | 99.45% | 76.02% | — |
 | FGSM ASR (ε=0.20) | 74.7% | 84.2% | 64–76% (black-box) |
 | I-FGSM ASR (ε=0.20) | 100.0% | 98.9% | 67–90% (black-box) |
+| **MI-FGSM ASR (ε=0.20)** | **99.8%** | **100.0%** | **88–96% (black-box)** |
+| Targeted FGSM TSR (ε=0.20) | 15.6% | 11.3% | — |
 | Steps to converge | ~40 | ~5 | — |
 | Adv-trained FGSM acc (ε=0.20) | ~85% | ~55% | — |
+
+**Live demo:** https://huggingface.co/spaces/wotttoo/fgsm-adversarial-demo
 
 ---
 
@@ -113,9 +117,9 @@ Attacking misclassified samples is meaningless — they are already wrong. This 
 ifgsm_project/
 │
 ├── attacks/
-│   ├── fgsm.py               # FGSM (1-step): class-based + functional API
-│   └── ifgsm.py              # I-FGSM: class-based + functional API
-│                             # Both support per-channel tensor clip (ImageNette)
+│   ├── fgsm.py               # FGSM (1-step): untargeted + targeted, functional API
+│   ├── ifgsm.py              # I-FGSM: class-based + functional API, random_start (PGD)
+│   └── mifgsm.py             # MI-FGSM: momentum iterative, MIFGSMAttack class + functional
 │
 ├── models/
 │   ├── cnn.py                # SimpleCNN — auto-adapts arch to MNIST / CIFAR-10
@@ -150,8 +154,11 @@ ifgsm_project/
 │   ├── exp3_visualize.py     # Images + perturbation + prediction probability charts
 │   ├── exp4_presentation.py  # Presentation grids: ε-sweep & T-sweep side-by-side
 │   ├── exp5_transfer.py      # Cross-architecture transfer attack  (CIFAR-10, 3×3 matrix)
-│   ├── exp_adv_eval.py       # NEW — Standard vs Adversarially Trained model comparison
-│   └── exp_fgsm_epsilon_grid.py  # NEW — FGSM ε-sweep image grid visualization
+│   ├── exp6_targeted.py      # Targeted FGSM — TSR matrix 10×10, untargeted vs targeted
+│   ├── exp7_mifgsm.py        # MI-FGSM comparison: ASR vs ε, vs steps T, transfer matrix
+│   ├── exp8_perclass.py      # Per-class vulnerability — ASR xếp hạng theo từng class
+│   ├── exp_adv_eval.py       # Standard vs Adversarially Trained model comparison
+│   └── exp_fgsm_epsilon_grid.py  # FGSM ε-sweep image grid visualization
 │
 ├── configs/
 │   └── config.yaml           # All hyperparameters in one place
@@ -165,11 +172,20 @@ ifgsm_project/
 │   └── test_ifgsm.py         # pytest unit tests (CPU, no checkpoint needed)
 │
 ├── train.py                  # Standard training script
-├── train_adv.py              # NEW — Adversarial training script (FGSM-AT)
+├── train_adv.py              # Adversarial training script (FGSM-AT)
 ├── main.py                   # Full pipeline: train → exp1 → exp2 → exp3
+├── generate_arch_figs.py     # VGG-style 3D CNN architecture diagrams (matplotlib)
 ├── generate_report.py        # Builds BaoCao_FGSM_IFGSM.docx (all experiments + adv training)
-├── generate_report_fgsm.py   # Builds BaoCao_FGSM.docx (FGSM-focused report)
+├── generate_report_fgsm.py   # Builds BaoCao_FGSM.docx (13 sections, 26 figures)
 ├── generate_slides_fgsm.py   # Builds TrinhChieu_FGSM.pptx (16-slide presentation)
+├── create_notebook.py        # Script tạo attack_visualization.ipynb
+├── attack_visualization.ipynb # Jupyter notebook trực quan hóa live (27 cells)
+├── hf_space/                 # Gradio demo deploy lên Hugging Face Spaces
+│   ├── app.py                # Gradio Blocks UI (FGSM + I-FGSM, MNIST + CIFAR-10)
+│   ├── models/               # SimpleCNN copy
+│   ├── attacks/              # fgsm.py copy
+│   ├── *_weights.pth         # Slim checkpoints (LFS, ~22MB total)
+│   └── sample_images/        # Ảnh mẫu MNIST (10) + CIFAR-10 (10)
 └── requirements.txt
 ```
 
@@ -538,7 +554,34 @@ adv = fgsm_attack(model, images, labels, epsilon=0.3)
 target_labels = torch.full_like(labels, fill_value=3)  # force → class 3
 attacker = IFGSMAttack(model, epsilon=0.2, num_steps=40, targeted=True)
 adv = attacker(images, target_labels)
+
+# Targeted FGSM (1 step)
+from attacks.fgsm import fgsm_attack
+adv = fgsm_attack(model, images, target_labels, epsilon=0.2, targeted=True)
 ```
+
+### MI-FGSM (Momentum Iterative FGSM)
+
+```python
+from attacks.mifgsm import MIFGSMAttack, mifgsm_attack
+
+# Class-based
+attacker = MIFGSMAttack(
+    model     = model,
+    epsilon   = 0.2,
+    num_steps = 10,
+    decay     = 1.0,    # momentum coefficient μ
+    targeted  = False,
+)
+adv = attacker(images, labels)
+
+# Functional
+adv = mifgsm_attack(model, images, labels, epsilon=0.2, num_steps=10, decay=1.0)
+```
+
+**Khi nào dùng MI-FGSM thay I-FGSM?**
+- Cần **transfer attack** hiệu quả hơn (MI-FGSM +7–13pp so với FGSM/I-FGSM trong black-box)
+- White-box: cả hai cho ASR tương đương (~100% tại ε=0.20)
 
 ---
 
@@ -1046,6 +1089,78 @@ python experiments/exp_fgsm_epsilon_grid.py --n_samples 8
 **File:** `experiments/exp_adv_eval.py`
 
 See the [Adversarial Training](#adversarial-training) section above for full details.
+
+---
+
+### Exp 8 — Targeted FGSM
+
+**File:** `experiments/exp6_targeted.py`
+
+Evaluates **targeted FGSM**: forces the model to predict a specific wrong class.
+
+- TSR matrix `[10×10]` — targeted success rate for every (source class → target class) pair
+- Comparison bar: untargeted ASR vs. targeted TSR at same ε
+
+```bash
+python experiments/exp6_targeted.py
+```
+
+**Key finding:** Targeted TSR (15.6% MNIST, 11.3% CIFAR-10) is dramatically lower than untargeted ASR (71–95%) — single-step gradient is insufficient for precise class targeting.
+
+**Output:** `exp6_targeted_tsr_heatmap_{dataset}.png`, `exp6_targeted_vs_untargeted.png`
+
+---
+
+### Exp 9 — MI-FGSM Comparison
+
+**File:** `experiments/exp7_mifgsm.py`
+
+Three sub-experiments comparing FGSM / I-FGSM / MI-FGSM:
+
+- **(7A)** ASR vs ε — all three attacks, MNIST & CIFAR-10
+- **(7B)** ASR vs steps T — I-FGSM vs MI-FGSM at ε=0.20
+- **(7C)** Transfer matrix 3×3 — FGSM vs MI-FGSM, CIFAR-10
+
+```bash
+python experiments/exp7_mifgsm.py
+```
+
+**Key finding:** MI-FGSM reaches 100% white-box ASR and improves transfer by up to +12.8pp (SimpleCNN→MobileNetV2) thanks to momentum stabilizing gradient direction.
+
+**Output:** `exp7_attack_comparison_asr.png`, `exp7_steps_comparison.png`, `exp7_transfer_fgsm_vs_mifgsm.png`
+
+---
+
+### Exp 10 — Per-class Vulnerability
+
+**File:** `experiments/exp8_perclass.py`
+
+Measures FGSM ASR and robust accuracy **per class** at ε=0.20.
+
+```bash
+python experiments/exp8_perclass.py
+```
+
+**Key findings:**
+- MNIST: class "8" most robust (ASR 27.2%); class "1" most vulnerable (ASR 100%)
+- CIFAR-10: SimpleCNN shows near-uniform high ASR across most classes
+
+**Output:** `exp8_perclass_{dataset}.png`
+
+---
+
+## Hugging Face Demo
+
+Live interactive demo: **https://huggingface.co/spaces/wotttoo/fgsm-adversarial-demo**
+
+Upload any image → choose MNIST or CIFAR-10 model → adjust ε → Attack!
+
+The Space shows:
+- Original image + amplified noise (×10) + adversarial image
+- Confidence bar charts before and after attack
+- Attack result: class prediction + confidence drop
+
+**Source:** `hf_space/` directory in this repo.
 
 ---
 
