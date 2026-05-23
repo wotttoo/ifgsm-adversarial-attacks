@@ -144,6 +144,7 @@ def plot_accuracy_vs_epsilon(
     results      : List[Dict],
     dataset_name : str           = "",
     save_path    : Optional[str] = None,
+    fgsm_only    : bool          = False,
 ) -> None:
     """
     Vẽ đường Clean / FGSM / I-FGSM accuracy theo epsilon.
@@ -153,11 +154,11 @@ def plot_accuracy_vs_epsilon(
     Args:
         results      : output của AdversarialEvaluator.evaluate_epsilon_range()
         dataset_name : tên dataset để hiển thị trên tiêu đề
+        fgsm_only    : nếu True chỉ vẽ đường FGSM, bỏ I-FGSM
     """
     epsilons   = [r["epsilon"]   for r in results]
     clean_accs = [r["clean_acc"] for r in results]
     fgsm_accs  = [r["fgsm_acc"]  for r in results]
-    ifgsm_accs = [r["ifgsm_acc"] for r in results]
 
     # clean_acc không đổi theo epsilon — lấy giá trị đầu tiên
     clean_baseline = clean_accs[0] if clean_accs else 0.0
@@ -173,18 +174,29 @@ def plot_accuracy_vs_epsilon(
     )
     ax.plot(epsilons, fgsm_accs,  "s-", color="orange",
             label="FGSM (1 bước)", linewidth=2, markersize=7)
-    ax.plot(epsilons, ifgsm_accs, "^-", color="red",
-            label="I-FGSM", linewidth=2.5, markersize=8)
+
+    if not fgsm_only:
+        ifgsm_accs = [r["ifgsm_acc"] for r in results]
+        ax.plot(epsilons, ifgsm_accs, "^-", color="red",
+                label="I-FGSM", linewidth=2.5, markersize=8)
 
     # Annotate drop tại epsilon lớn nhất
     if results:
         last = results[-1]
-        ax.annotate(
-            f"↓{last['ifgsm_drop']:.1f}%",
-            xy=(last["epsilon"], last["ifgsm_acc"]),
-            xytext=(0, -18), textcoords="offset points",
-            ha="center", fontsize=9, color="red",
-        )
+        if fgsm_only:
+            ax.annotate(
+                f"↓{last['fgsm_drop']:.1f}%",
+                xy=(last["epsilon"], last["fgsm_acc"]),
+                xytext=(0, -18), textcoords="offset points",
+                ha="center", fontsize=9, color="orange",
+            )
+        else:
+            ax.annotate(
+                f"↓{last['ifgsm_drop']:.1f}%",
+                xy=(last["epsilon"], last["ifgsm_acc"]),
+                xytext=(0, -18), textcoords="offset points",
+                ha="center", fontsize=9, color="red",
+            )
 
     ds_title = f" — {dataset_name}" if dataset_name else ""
     ax.set_xlabel("Epsilon (ε)", fontsize=12)
