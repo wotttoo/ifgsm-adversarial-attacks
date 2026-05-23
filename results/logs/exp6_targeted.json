@@ -1,0 +1,14 @@
+{
+  "epsilon": 0.2,
+  "n_samples": 1000,
+  "comparison": {
+    "mnist": {
+      "untargeted_asr": 71.14581353962421,
+      "targeted_asr": 15.618159528821707
+    },
+    "cifar10": {
+      "untargeted_asr": 95.00902406871319,
+      "targeted_asr": 11.334419692866504
+    }
+  }
+}
