@@ -174,12 +174,6 @@ ifgsm_project/
 ├── train.py                  # Standard training script
 ├── train_adv.py              # Adversarial training script (FGSM-AT)
 ├── main.py                   # Full pipeline: train → exp1 → exp2 → exp3
-├── generate_arch_figs.py     # VGG-style 3D CNN architecture diagrams (matplotlib)
-├── generate_report.py        # Builds BaoCao_FGSM_IFGSM.docx (all experiments + adv training)
-├── generate_report_fgsm.py   # Builds BaoCao_FGSM.docx (13 sections, 26 figures)
-├── generate_slides_fgsm.py   # Builds TrinhChieu_FGSM.pptx (16-slide presentation)
-├── create_notebook.py        # Script tạo attack_visualization.ipynb
-├── attack_visualization.ipynb # Jupyter notebook trực quan hóa live (27 cells)
 ├── hf_space/                 # Gradio demo deploy lên Hugging Face Spaces
 │   ├── app.py                # Gradio Blocks UI (FGSM + I-FGSM, MNIST + CIFAR-10)
 │   ├── models/               # SimpleCNN copy
@@ -471,19 +465,6 @@ python experiments/exp_adv_eval.py --dataset both
 
 # FGSM epsilon grid visualization
 python experiments/exp_fgsm_epsilon_grid.py --dataset both
-```
-
-### Generate reports and slides
-
-```bash
-# Full report (FGSM + I-FGSM + Adversarial Training)
-python generate_report.py            # → results/BaoCao_FGSM_IFGSM.docx
-
-# FGSM-only report
-python generate_report_fgsm.py       # → results/BaoCao_FGSM.docx
-
-# Presentation slides (16 slides)
-python generate_slides_fgsm.py       # → results/TrinhChieu_FGSM.pptx
 ```
 
 ### Run unit tests
